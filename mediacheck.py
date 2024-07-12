@@ -6,17 +6,19 @@ import pytz
 import json
 import os
 from urllib.parse import urlparse
+from keywords import keywords  # Import keywords from keywords.py
 
 # Funkce pro kontrolu, zda článek obsahuje daná klíčová slova
 def contains_keywords(text, keywords):
+    found_keywords = []
     for key, full_word in keywords.items():
-        if key == 'AI':
-            if 'AI' in text:
-                return full_word
+        if key in ["AI", "MAGA"]:  # Kontrola "AI" a "MAGA"
+            if key in text:
+                found_keywords.append(full_word)
         else:
             if key.lower() in text.lower():  # Hledání bez ohledu na velikost písmen
-                return full_word
-    return None
+                found_keywords.append(full_word)
+    return found_keywords
 
 # Funkce pro získání textu z entry summary
 def get_summary_text(entry):
@@ -46,16 +48,16 @@ def fetch_rss(feed_url, start_date, end_date, keywords):
             content = entry.title + " " + summary_text
             link = entry.link
             source = get_server_name(link)
-            keyword_found = contains_keywords(content, keywords)  # Přidáno pro kontrolu klíčových slov
+            keywords_found = contains_keywords(content, keywords)  # Přidáno pro kontrolu klíčových slov
             if source == 'cedmohub.eu':  # Pokud je zdroj cedmohub.eu, nastavit klíčové slovo na fact-checking
-                keyword_found = 'fact-checking'
+                keywords_found.append('fact-checking')
             articles.append({
                 'title': entry.title,
                 'link': link,
                 'published': entry.published,
                 'content': content,
                 'source': source,  # Přidání serveru do slovníku
-                'keyword': keyword_found if keyword_found else 'N/A'  # Přidáno klíčové slovo do slovníku
+                'keywords': keywords_found if keywords_found else ['N/A']  # Přidáno klíčové slovo do slovníku
             })
     return articles
 
@@ -101,18 +103,18 @@ def save_articles_to_file(articles, output_file):
     with open(output_file, 'w', encoding='utf-8') as f:
         for article in articles:
             source = article.get('source', 'unknown')  # Zajištění, že klíč 'source' vždy existuje
-            keyword = article.get('keyword', 'N/A')  # Zajištění, že klíč 'keyword' vždy existuje
+            keywords = ', '.join(article.get('keywords', ['N/A']))  # Zajištění, že klíč 'keywords' vždy existuje
             published_date = dateparse(article['published']).strftime("%d.%m")
-            line = f'<li class="novinka" data-keywords="{keyword}"><a href="{article["link"]}" target="_blank">{article["title"]}</a> <small>({source})</small> <code class="highlighter-rouge">{keyword}</code></li>\n'
+            line = f'<li class="novinka" data-keywords="{keywords}"><a href="{article["link"]}" target="_blank">{article["title"]}</a> <small>({source})</small> <code class="highlighter-rouge">{keywords}</code></li>\n'
             f.write(line)
 
 # Zobrazení filtrovaných článků na obrazovku
 def display_articles_to_console(articles):
     for article in articles:
         source = article.get('source', 'unknown')  # Zajištění, že klíč 'source' vždy existuje
-        keyword = article.get('keyword', 'N/A')  # Zajištění, že klíč 'keyword' vždy existuje
+        keywords = ', '.join(article.get('keywords', ['N/A']))  # Zajištění, že klíč 'keywords' vždy existuje
         published_date = dateparse(article['published']).strftime("%d.%m")
-        line = f"- {article['title']} ({source}, {published_date} - {keyword})"
+        line = f"- {article['title']} ({source}, {published_date} - {keywords})"
         print(line)
 
 # Hlavní program
@@ -162,127 +164,6 @@ if __name__ == "__main__":
         # Přidejte další RSS kanály podle potřeby
     ]
 
-    # Dictionary pro vyhledávání slov v textu a jejich převod na kategorie.
-    keywords = {
-        #dezinformace
-        'dezinform': 'dezinformace',
-        'misinform': 'dezinformace',
-        'malinforma': 'dezinformace',
-        'hoax': 'dezinformace',
-        'konspir': 'dezinformace',         #mozna zvlast kategorie
-        'fake news': 'dezinformace',
-        'postfakt': 'dezinformace',
-        'pseudověd': 'dezinformace',
-        'chemtrails': 'dezinformace',
-
-        #strategická komunikace
-        'strategická komunik': 'strategická komunikace',
-        'stratcom': 'strategická komunikace',
-
-        #propaganda
-        'propagand': 'propaganda',
-        'spamouflage': 'propaganda',
-        'dragonbridge': 'propaganda',
-        'sociální inženýrství': 'sociální inženýrství',
-        'storm 1376': 'storm 1376',
-        'qanon': 'qanon',
-        'infowars': 'infoWars',
-        'false flag': 'false flag',
-        'hybridní hrozb': 'hybridní hrozba',
-        'informační válk': 'informační válka',
-        'informační operac': 'informační operace',
-        'narativ': 'narativ',
-        'mystifika': 'mystifikace',
-
-        #sociální sítě
-        'twitter': 'sociální sítě',
-        'Meta': 'sociální sítě',
-        'musk': 'Elon Musk',
-        'tik tok': 'sociální sítě',
-        'sociální sítě': 'sociální sítě',
-        'algoritm': 'sociální sítě',
-
-        #AI
-        'umělá inteligence': 'umělá inteligence',
-        'deepfake': 'umělá inteligence',
-        'AI': 'umělá inteligence',
-
-        #Kyberbezpečnost
-        'phishing': 'kyberbezpečnost',
-        'kyber': 'kyberbezpečnost',
-        'botnet': 'kyberbezpečnost',
-        'ddos': 'kyberbezpečnost',
-        'scam': 'kyberbezpečnost',
-        'smishing': 'kyberbezpečnost',
-        'vishing': 'kyberbezpečnost',
-        'hack': 'kyberbezpečnost',
-        'phreak': 'kyberbezpečnost',
-        'ransomware': 'kyberbezpečnost',
-        'sociální inženýr': 'kyberbezpečnost',
-        'únik dat': 'kyberbezpečnost',
-        'zero-day': 'kyberbezpečnost',
-        'zero day': 'kyberbezpečnost',
-        'krádež identity': 'kyberbezpečnost',
-        'malware': 'kyberbezpečnost',
-        'hijacking': 'kyberbezpečnost',
-        
-        #Podvodné praktiky
-        'podvod': 'podvod',
-        'clickbait': 'clickbait',
-        'spam': 'podvod',
-
-        #Kyberšikana
-        'kyberšikan': 'kyberšikana',
-        'doxx': 'kyberšikana',
-        'doxing': 'kyberšikana',
-        'brigading': 'kyberšikana',
-        'stalkgin': 'kyberšikana',
-        'sextortion': 'kyberšikana',
-        'troll': 'kyberšikana',
-        'gaslighting': 'kyberšikana',
-
-        #Mediální gramotnost
-        'mediální gramotnost': 'mediální gramotnost',
-
-        #Řetězové zprávy
-        'řetězový email': 'řetězáky',
-        'řetězové email': 'řetězáky',
-        'řetězák': 'řetězáky',
-
-        #Svoboda slova
-        'svoboda slova': 'svoboda slova',
-        'cenzúr': 'svoboda slova',
-        'cenzur': 'svoboda slova',
-        'newspeak': 'svoboda slova',
-
-        #Fact-checking
-        'fact-checking': 'fact-checking',
-        'overovanie faktov': 'fact-checking',
-        'ověřování faktů': 'fact-checking',
-        'prebunking': 'fact-checking',
-        'debunking': 'fact-checking',
-
-        #Radikalizace
-        'manosféra': 'radikalizace',
-        'redpilling': 'radikalizace',
-        'radikali': 'radikalizace',
-        'krajní pravice': 'krajní pravice',
-        'weaponiz': 'radikalizace',
-        'MAGA': 'radikalizace', #new
-        'trumpismus': 'radikalizace', #new
-
-        #Kritické myšlení
-        'konfirmačn': 'konfirmační bias',
-        'kritické myšlení': 'kritické myšlení',
-
-        #Nevim
-        'manipulace': 'manipulace',
-
-        #Out - nikdo nehleda
-        #'gerrymandering': 'gerrymandering',
-        #'overton': 'overtonovo okno',
-    }
-
     # Zadání datumového rozmezí
     start_date_str = input("Zadejte počáteční datum (YYYY-MM-DD): ")
     end_date_str = input("Zadejte koncové datum (YYYY-MM-DD): ")
@@ -307,7 +188,7 @@ if __name__ == "__main__":
     # Filtrování článků podle klíčových slov a datumového rozmezí a zdroje
     filtered_articles = [
         article for article in updated_rss_content
-        if ((article['keyword'] != 'N/A' or article.get('source') == 'cedmohub.eu') and
+        if ('keywords' in article and ('N/A' not in article['keywords'] or article.get('source') == 'cedmohub.eu') and
         start_date <= dateparse(article['published']).replace(tzinfo=pytz.UTC) <= end_date)
     ]
    
