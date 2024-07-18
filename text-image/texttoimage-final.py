@@ -16,10 +16,13 @@ def wrap_text(text, font, max_width):
 def add_text_to_image(image, text, font_path, font_size, text_color, y_start=None):
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(font_path, font_size)
-    lines = wrap_text(text, font, image.width - 40)
+    lines = wrap_text(text, font, image.width - 150)
 
     # Calculate vertical centering if y_start is not provided
-    total_text_height = sum(draw.textsize(line, font=font)[1] for line in lines)
+    line_spacing = 1  # Add this line for custom line spacing
+
+    total_text_height = sum(draw.textsize(line, font=font)[1] * line_spacing for line in lines)
+
     if y_start is None:
         y_start = (image.height - total_text_height) // 2
 
@@ -27,7 +30,7 @@ def add_text_to_image(image, text, font_path, font_size, text_color, y_start=Non
         text_width, text_height = draw.textsize(line, font=font)
         text_position = ((image.width - text_width) // 2, y_start)
         draw.text(text_position, line, font=font, fill=text_color)
-        y_start += text_height
+        y_start += text_height * line_spacing
 
     return y_start  # Return the ending y position
 
@@ -45,21 +48,30 @@ def add_side_by_side_text(image, left_text, right_text, font_path, font_size, le
 
     return y_start + text_height
 
-def add_logo_text_to_image(image, logo_text, font_path, font_size, colors):
+def add_logo_and_text(image, logo_path, text, font_path, font_size, text_color):
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(font_path, font_size)
-    parts = logo_text.split()
 
-    # Calculate the total width of the logo text
-    total_text_width = sum(draw.textsize(part, font=font)[0] for part in parts) + (len(parts) - 1) * 5
-    x_offset = (image.width - total_text_width) // 2
-    y_offset = image.height - font_size - 40  # 20 pixels from the bottom
+    # Load the logo image
+    logo_image = Image.open(logo_path).convert("RGBA")  # Convert to RGBA for transparency
 
-    for part, color in zip(parts, colors):
-        text_width, text_height = draw.textsize(part, font=font)
-        text_position = (x_offset, y_offset)
-        draw.text(text_position, part, font=font, fill=color)
-        x_offset += text_width + 5
+    # Calculate the new size while maintaining aspect ratio
+    logo_height = 30
+    aspect_ratio = logo_image.width / logo_image.height
+    logo_image = logo_image.resize((int(logo_height * aspect_ratio), logo_height))
+
+    # Calculate positions
+    text_width, text_height = draw.textsize(text, font=font)
+    total_width = logo_image.width + text_width - 5  # 5 pixels spacing between logo and text
+    x_start = (image.width - total_width) // 2
+    y_start = image.height - logo_image.height - 40  # 40 pixels from the bottom
+
+    # Paste the logo image
+    image.paste(logo_image, (x_start, y_start), logo_image.split()[3])  # Use the alpha channel as the mask
+
+    # Draw the text
+    text_position = (x_start + logo_image.width - 5, y_start + (logo_image.height - text_height) // 2)
+    draw.text(text_position, text, font=font, fill=text_color)
 
     return image
 
@@ -88,8 +100,8 @@ def create_image_with_text(text1, text2, date_text, source_text, logo_text, widt
     font2 = ImageFont.truetype(font_path2, font_size2)
     font3 = ImageFont.truetype(font_path2, font_size3)  # Font for date_text and source_text
 
-    lines1 = wrap_text(text1, font1, img.width - 40)
-    lines2 = wrap_text(text2, font2, img.width - 40)
+    lines1 = wrap_text(text1, font1, img.width - 150)
+    lines2 = wrap_text(text2, font2, img.width - 100)
 
     total_text_height = (
         sum(draw.textsize(line, font=font1)[1] for line in lines1) +
@@ -102,13 +114,13 @@ def create_image_with_text(text1, text2, date_text, source_text, logo_text, widt
     y_start = (img.height - total_text_height) // 2
 
     # Add the first text
-    y_end = add_text_to_image(img, text1, font_path1, font_size1, "#00ffc9", y_start)
+    y_end = add_text_to_image(img, text1, font_path1, font_size1, "#04F3F3", y_start)
     # Add the second text with 40px spacing
-    y_end = add_text_to_image(img, text2, font_path2, font_size2, "#ffffff", y_end + 20)
+    y_end = add_text_to_image(img, text2, font_path2, font_size2, "#ffffff", y_end + 40)
     # Add the date and source text side by side with 40px spacing
     y_end = add_side_by_side_text(img, date_text, source_text, font_path2, font_size3, "#ffffff", "#ffffff", y_end + 20)
     # Add the logo text at the bottom
-    img_with_logo = add_logo_text_to_image(img, logo_text, font_path1, font_size_logo, colors)
+    img_with_logo = add_logo_and_text(img, "kyberzpravy-logo.png", "yberzpravy.cz", font_path1, font_size_logo, "#ffffff")
 
     return img_with_logo
 
@@ -116,13 +128,13 @@ text1 = "Před dovolenou si zálohujte telefon a fotkami se pochlubte raději a�
 text2 = "Ztráta kufru nebo zpožděný let není to nejhorší, co vás může na dovolené potkat. Na okamžik, kdy „přepnete“ do dovolenkového módu, totiž čekají kyberútočníci. Pro ně je období letních prázdnin ideální příležitostí, jak z lidí vylákat citlivé údaje, jako jsou třeba hesla k internetovému bankovnictví. Jak jim nenaletět, popsal pro Radiožurnál a iROZHLAS.cz Roman Pačka z Národního úřadu pro kybernetickou a informační bezpečnost (NÚKIB)"
 date_text = "6. července 2024"
 source_text = "www.seznam.cz"
-logo_text = "KyberZpravy.cz"
+logo_text = "yberzpravy.cz"  # Updated text without the 'K'
 width = 1024
 height = 1024
-overlay_color = (4, 4, 2, 204)  # Solid background color with transparency (0-255)
-font_path1 = "PTSansNarrow-Bold.ttf"
-font_path2 = "OpenSans-Regular.ttf"
-font_size1 = 55
+overlay_color = (6, 5, 37, 245) # Solid background color with transparency (0-255)
+font_path1 = "Barlow-Bold.ttf"
+font_path2 = "Inter-Regular.ttf"
+font_size1 = 48
 font_size2 = 28
 font_size3 = 18
 font_size_logo = 30  # Add this parameter for logo text size
