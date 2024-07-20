@@ -2,3 +2,6 @@
 monitoring.md
 rss-obsah.json
 rss-obsah.json.bak
+mediacheck\__pycache__
+__pycache__
+output_image*
