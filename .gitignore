@@ -5,3 +5,7 @@ rss-obsah.json.bak
 mediacheck\__pycache__
 __pycache__
 output_image*
+telegram\telegram*
+telegram\feeds.json
+telegram\telegram.html
+telegram\telegram.html.bak
